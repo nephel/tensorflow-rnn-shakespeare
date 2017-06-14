@@ -15,10 +15,10 @@
 
 import tensorflow as tf
 import numpy as np
-import my_txtutils
+import my_txtutils_greek
 
 # these must match what was saved !
-ALPHASIZE = my_txtutils.ALPHASIZE
+ALPHASIZE = my_txtutils_greek.ALPHASIZE
 NLAYERS = 3
 INTERNALSIZE = 512
 
@@ -39,7 +39,7 @@ INTERNALSIZE = 512
 #shakespeareC8 = "./rnn_test_minibatchseq_1477684737-20049000"  # most scenic indications correct: [Stabs aside] [Enter FERDINAND] [Dies] [Exit ROSALIND] [To COMINIUS with me]
 #shakespeareC9 = "./rnn_test_minibatchseq_1477684737-47997000"  # [Enter CYMBELINE and LUCETTA] [Enter PRINCE HENRY and Patroclus] [Exeunt all but two Englishman] [Enter PRINCE HENRY, and Attendants]
 #shakespeareB10 = "./rnn_test_minibatchseq_1477670023-174939000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
-shakespeareB10 = "./checkpoints/rnn_train_1497358969-3000000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
+shakespeareB10 = "./checkpoints/rnn_train_1497454445-3000000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
 #
 #pythonA0 = "./rnn_test_minibatchseq_1477832845-150000"  # gibberish
 #pythonA1 = "./rnn_test_minibatchseq_1477832845-300000"  # some == and (
@@ -52,9 +52,9 @@ author = shakespeareB10
 
 ncnt = 0
 with tf.Session() as sess:
-    new_saver = tf.train.import_meta_graph('./checkpoints/rnn_train_1497358969-3000000.meta')
+    new_saver = tf.train.import_meta_graph('./checkpoints/rnn_train_1497454445-3000000.meta')
     new_saver.restore(sess, author)
-    x = my_txtutils.convert_from_alphabet(ord("K"))
+    x = my_txtutils_greek.convert_from_alphabet(ord("K"))
     x = np.array([[x]])  # shape [BATCHSIZE, SEQLEN] with BATCHSIZE=1 and SEQLEN=1
 
     # initial values
@@ -69,9 +69,9 @@ with tf.Session() as sess:
 
         # Recommended: topn = 10 for intermediate checkpoints, topn=2 for fully trained checkpoints
 
-        c = my_txtutils.sample_from_probabilities(yo, topn=2)
+        c = my_txtutils_greek.sample_from_probabilities(yo, topn=2)
         y = np.array([[c]])  # shape [BATCHSIZE, SEQLEN] with BATCHSIZE=1 and SEQLEN=1
-        c = chr(my_txtutils.convert_to_alphabet(c))
+        c = chr(my_txtutils_greek.convert_to_alphabet(c))
         print(c, end="")
 
         if c == '\n':

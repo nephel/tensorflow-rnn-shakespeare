@@ -20,7 +20,7 @@ import os
 import time
 import math
 import numpy as np
-import my_txtutils as txt
+import my_txtutils_greek as txt
 tf.set_random_seed(0)
 
 # model parameters
@@ -46,7 +46,7 @@ learning_rate = 0.001  # fixed learning rate
 dropout_pkeep = 1.0    # no dropout
 
 # load data, either shakespeare, or the Python source of Tensorflow itself
-shakedir = "kazantzakis/*zorbas*.txt"
+shakedir = "kazantzakis/*askitiki*.txt"
 # shakedir = "../tensorflow/**/*.py"
 codetext, valitext, bookranges = txt.read_data_files(shakedir, validation=False)
 
