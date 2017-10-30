@@ -20,7 +20,7 @@ import os
 import time
 import math
 import numpy as np
-import my_txtutils as txt
+import my_txtutils_greek as txt
 tf.set_random_seed(0)
 
 # model parameters
@@ -38,12 +38,12 @@ tf.set_random_seed(0)
 #         training data (shakedir = "shakespeare/t*.txt" for example)
 #
 SEQLEN = 30
-BATCHSIZE = 200
+BATCHSIZE = 100
 ALPHASIZE = txt.ALPHASIZE
 INTERNALSIZE = 512
 NLAYERS = 3
 learning_rate = 0.001  # fixed learning rate
-dropout_pkeep = 0.8    # some dropout
+dropout_pkeep = 1.0    # no dropout
 
 # load data, either shakespeare, or the Python source of Tensorflow itself
 shakedir = "papadiamantis/*.txt"
@@ -73,13 +73,10 @@ Hin = tf.placeholder(tf.float32, [None, INTERNALSIZE*NLAYERS], name='Hin')  # [ 
 # using a NLAYERS=3 layers of GRU cells, unrolled SEQLEN=30 times
 # dynamic_rnn infers SEQLEN from the size of the inputs Xo
 
-# How to properly apply dropout in RNNs: see README.md
-cells = [rnn.GRUCell(INTERNALSIZE) for _ in range(NLAYERS)]
-# "naive dropout" implementation
-dropcells = [rnn.DropoutWrapper(cell,input_keep_prob=pkeep) for cell in cells]
-multicell = rnn.MultiRNNCell(dropcells, state_is_tuple=False)
-multicell = rnn.DropoutWrapper(multicell, output_keep_prob=pkeep)  # dropout for the softmax layer
-
+onecell = rnn.GRUCell(INTERNALSIZE)
+dropcell = rnn.DropoutWrapper(onecell, input_keep_prob=pkeep)
+multicell = rnn.MultiRNNCell([dropcell]*NLAYERS, state_is_tuple=False)
+multicell = rnn.DropoutWrapper(multicell, output_keep_prob=pkeep)
 Yr, H = tf.nn.dynamic_rnn(multicell, Xo, dtype=tf.float32, initial_state=Hin)
 # Yr: [ BATCHSIZE, SEQLEN, INTERNALSIZE ]
 # H:  [ BATCHSIZE, INTERNALSIZE*NLAYERS ] # this is the last state in the sequence
@@ -89,7 +86,7 @@ H = tf.identity(H, name='H')  # just to give it a name
 # Softmax layer implementation:
 # Flatten the first two dimension of the output [ BATCHSIZE, SEQLEN, ALPHASIZE ] => [ BATCHSIZE x SEQLEN, ALPHASIZE ]
 # then apply softmax readout layer. This way, the weights and biases are shared across unrolled time steps.
-# From the readout point of view, a value coming from a sequence time step or a minibatch item is the same thing.
+# From the readout point of view, a value coming from a cell or a minibatch is the same thing
 
 Yflat = tf.reshape(Yr, [-1, INTERNALSIZE])    # [ BATCHSIZE x SEQLEN, INTERNALSIZE ]
 Ylogits = layers.linear(Yflat, ALPHASIZE)     # [ BATCHSIZE x SEQLEN, ALPHASIZE ]
@@ -120,7 +117,7 @@ validation_writer = tf.summary.FileWriter("log/" + timestamp + "-validation")
 # Only the last checkpoint is kept.
 if not os.path.exists("checkpoints"):
     os.mkdir("checkpoints")
-saver = tf.train.Saver(max_to_keep=1000)
+saver = tf.train.Saver(max_to_keep=1)
 
 # for display: init the progress bar
 DISPLAY_FREQ = 50
@@ -135,18 +132,20 @@ sess.run(init)
 step = 0
 
 # training loop
-for x, y_, epoch in txt.rnn_minibatch_sequencer(codetext, BATCHSIZE, SEQLEN, nb_epochs=10):
+for x, y_, epoch in txt.rnn_minibatch_sequencer(codetext, BATCHSIZE, SEQLEN, nb_epochs=1000):
 
     # train on one minibatch
     feed_dict = {X: x, Y_: y_, Hin: istate, lr: learning_rate, pkeep: dropout_pkeep, batchsize: BATCHSIZE}
-    _, y, ostate = sess.run([train_step, Y, H], feed_dict=feed_dict)
+    _, y, ostate, smm = sess.run([train_step, Y, H, summaries], feed_dict=feed_dict)
 
-    # log training data for Tensorboard display a mini-batch of sequences (every 50 batches)
+    # save training data for Tensorboard
+    summary_writer.add_summary(smm, step)
+
+    # display a visual validation of progress (every 50 batches)
     if step % _50_BATCHES == 0:
         feed_dict = {X: x, Y_: y_, Hin: istate, pkeep: 1.0, batchsize: BATCHSIZE}  # no dropout for validation
-        y, l, bl, acc, smm = sess.run([Y, seqloss, batchloss, accuracy, summaries], feed_dict=feed_dict)
+        y, l, bl, acc = sess.run([Y, seqloss, batchloss, accuracy], feed_dict=feed_dict)
         txt.print_learning_learned_comparison(x, y, l, bookranges, bl, acc, epoch_size, step, epoch)
-        summary_writer.add_summary(smm, step)
 
     # run a validation step every 50 batches
     # The validation text should be a single sequence but that's too slow (1s per 1024 chars!),
@@ -179,8 +178,7 @@ for x, y_, epoch in txt.rnn_minibatch_sequencer(codetext, BATCHSIZE, SEQLEN, nb_
 
     # save a checkpoint (every 500 batches)
     if step // 10 % _50_BATCHES == 0:
-        saved_file = saver.save(sess, 'checkpoints/rnn_train_' + timestamp, global_step=step)
-        print("Saved file: " + saved_file)
+        saver.save(sess, 'checkpoints/rnn_train_' + timestamp, global_step=step)
 
     # display progress bar
     progress.step(reset=step % _50_BATCHES == 0)
@@ -196,18 +194,15 @@ for x, y_, epoch in txt.rnn_minibatch_sequencer(codetext, BATCHSIZE, SEQLEN, nb_
 # Tensorflow runs:
 # 1485434262
 #   trained on shakespeare/t*.txt only. Validation on 1K sequences
-#   validation loss goes up from step 5M (overfitting because of small dataset)
+#   validation loss goes up from step 5M
 # 1485436038
 #   trained on shakespeare/t*.txt only. Validation on 5K sequences
 #   On 5K sequences validation accuracy is slightly higher and loss slightly lower
 #   => sequence breaks do introduce inaccuracies but the effect is small
 # 1485437956
-#   Trained on shakespeare/*.txt. Validation on 1K sequences
+#   Trained on shakespeare/*.txt only. Validation on 1K sequences
 #   On this much larger dataset, validation loss still decreasing after 6 epochs (step 35M)
-# 1495447371
-#   Trained on shakespeare/*.txt no dropout, 30 epochs
-#   Validation loss starts going up after 10 epochs (overfitting)
-# 1495440473
-#   Trained on shakespeare/*.txt "naive dropout" pkeep=0.8, 30 epochs
-#   Dropout brings the validation loss under control, preventing it from
-#   going up but the effect is small.
+# 1485440785
+#   Dropout = 0.5 - Trained on shakespeare/*.txt only. Validation on 1K sequences
+#   Much worse than before. Not very surprising since overfitting was not apparent
+#   on the validation curves before so there is nothing for dropout to fix.

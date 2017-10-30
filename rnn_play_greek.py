@@ -15,18 +15,18 @@
 
 import tensorflow as tf
 import numpy as np
-import my_txtutils
+import my_txtutils_greek
 
 # these must match what was saved !
-ALPHASIZE = my_txtutils.ALPHASIZE
+ALPHASIZE = my_txtutils_greek.ALPHASIZE
 NLAYERS = 3
 INTERNALSIZE = 512
 
 # Data files can be downloaded from the following locations:
 #    - Fully trained on Shakespeare or Tensorflow Python source:
-#      https://drive.google.com/file/d/0B5njS_LX6IsDc2lWTmtyanRpOHc/view?usp=sharing
+#      https://drive.google.com/file/d/0B5njS_LX6IsDQ1laeDJ6dktSb3M/view?usp=sharing
 #    - Partially trained, to see how they make progress in training:
-#      https://drive.google.com/file/d/0B5njS_LX6IsDUlFsMkdhclNSazA/view?usp=sharing
+#      https://drive.google.com/file/d/0B5njS_LX6IsDc2Y0X1VWc1pVTE0/view?usp=sharing
 
 #shakespeareC0 = "./rnn_test_minibatchseq_1477684737-0"      # random
 #shakespeareC1 = "./rnn_test_minibatchseq_1477684737-150000"  # mostly lower case
@@ -39,27 +39,22 @@ INTERNALSIZE = 512
 #shakespeareC8 = "./rnn_test_minibatchseq_1477684737-20049000"  # most scenic indications correct: [Stabs aside] [Enter FERDINAND] [Dies] [Exit ROSALIND] [To COMINIUS with me]
 #shakespeareC9 = "./rnn_test_minibatchseq_1477684737-47997000"  # [Enter CYMBELINE and LUCETTA] [Enter PRINCE HENRY and Patroclus] [Exeunt all but two Englishman] [Enter PRINCE HENRY, and Attendants]
 #shakespeareB10 = "./rnn_test_minibatchseq_1477670023-174939000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
-shakespeareB10 = "./checkpoints/rnn_train_1497358969-3000000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
+shakespeareB10 = "./checkpoints/rnn_train_1497454445-3000000"  # [Re-enter LAUNIS'S] [Enter MARK ANTONY and TREBIAGO, DIONA, and CAPULET and Lords, and Soldiers]
 #
 #pythonA0 = "./rnn_test_minibatchseq_1477832845-150000"  # gibberish
 #pythonA1 = "./rnn_test_minibatchseq_1477832845-300000"  # some == and (
 #pythonA2 = "./rnn_test_minibatchseq_1477832845-1050000"  # correct function calls with parameters and ()
 #pythonA3 = "./rnn_test_minibatchseq_1477832845-4050000"  # looks like Tensorflow Python, nested () and [] ok
 #pythonB10 = "./rnn_test_minibatchseq_1477834023-138609000"  # can even recite the Apache license
->>>>>>> papadiamantis
 
-# use topn=10 for all but the last one which works with topn=2 for Shakespeare and topn=3 for Python
+# use topn=10 for all but the last which works with topn=2 for Shakespeare and topn=3 for Python
 author = shakespeareB10
 
 ncnt = 0
 with tf.Session() as sess:
-<<<<<<< HEAD
-    new_saver = tf.train.import_meta_graph('checkpoints/rnn_train_1495455686-0.meta')
-=======
-    new_saver = tf.train.import_meta_graph('./checkpoints/rnn_train_1497358969-3000000.meta')
->>>>>>> papadiamantis
+    new_saver = tf.train.import_meta_graph('./checkpoints/rnn_train_1497454445-3000000.meta')
     new_saver.restore(sess, author)
-    x = my_txtutils.convert_from_alphabet(ord("L"))
+    x = my_txtutils_greek.convert_from_alphabet(ord("K"))
     x = np.array([[x]])  # shape [BATCHSIZE, SEQLEN] with BATCHSIZE=1 and SEQLEN=1
 
     # initial values
@@ -72,11 +67,11 @@ with tf.Session() as sess:
         # is more credible and more "english". If topn is not set, it defaults to the full
         # distribution (ALPHASIZE)
 
-        # Recommended: topn = 10 for intermediate checkpoints, topn=2 or 3 for fully trained checkpoints
+        # Recommended: topn = 10 for intermediate checkpoints, topn=2 for fully trained checkpoints
 
-        c = my_txtutils.sample_from_probabilities(yo, topn=2)
+        c = my_txtutils_greek.sample_from_probabilities(yo, topn=2)
         y = np.array([[c]])  # shape [BATCHSIZE, SEQLEN] with BATCHSIZE=1 and SEQLEN=1
-        c = chr(my_txtutils.convert_to_alphabet(c))
+        c = chr(my_txtutils_greek.convert_to_alphabet(c))
         print(c, end="")
 
         if c == '\n':
